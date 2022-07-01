@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>HTTPLog</title>
+    <meta name="keywords" content="HTTPlog"/>
+    <meta name="description" content="HTTPlog"/>
+    <script src="/static/js/vue.js"></script>
+    <script src="/static/js/axios.min.js"></script>
+</head>
+<body>
+<div id=header style="text-align:center">
+    <hr style=" height:2px;border:none;border-top:2px dashed #87CEFA;"/>
+</div>
+<div style="text-align:center;" id="app">
+    <button type="button" v-on:click="GetRecords">刷新记录</button>
+    <button type="button" v-on:click="GetRecord">复制随机URI</button>
+    <button type="button" v-on:click="Clean">清空</button>
+    <br>
+    <div id="myRecord">{{ newRecord }}</div>
+    <br>
+    <div id="myRecords">{{ records }}</div>
+</div>
+</body>
+<br>
+<div id=footer>
+    <hr style=" height:2px;border:none;border-top:2px dashed #87CEFA;"/>
+    <br>
+    <center><span style="color:#ADD3EF">HTTPLog</span></center>
+</div>
+
+<script>
+    var app = new Vue({
+        el: '#app',
+        data: {
+            records: "",
+            Token: "",
+            newRecord: "",
+        },
+        methods: {
+            GetRecord: function () {
+                axios.post("/record",null, {
+                    headers: {
+                        'token': this.Token
+                    }
+                }).then(
+                    res => {
+                        console.log(res)
+                        if (res['data']['HTTPStatusCode'] == "200") {
+                            this.newRecord =res['data']['Msg']
+                            console.log(this.newRecord)
+                            let domUrl = document.createElement("input");
+                            domUrl.value = this.newRecord;
+                            domUrl.id = "creatDom";
+                            document.body.appendChild(domUrl);
+                            domUrl.select(); // 选择对象
+                            document.execCommand("Copy"); // 执行浏览器复制命令
+                            let creatDom = document.getElementById("creatDom");
+                            creatDom.parentNode.removeChild(creatDom);
+                            app.newRecord=this.newRecord
+                            alert("复制成功");
+                        }
+                    }
+                )
+            },
+            GetRecords:function (){
+                axios.get("/record",{
+                    headers:{
+                        'token': this.Token
+                    }
+                }).then(
+                    res => {
+                        this.records=res.data
+                    }
+                )
+            },
+            Clean: function () {
+                axios.get("/record/clean", {
+                    headers: {
+                        'token': this.Token
+                    }
+                }).then()
+                this.records = "[]"
+            }
+        },
+        mounted() {
+            let token;
+            if (localStorage.getItem("token") == null) {
+                token = prompt("请输入Token")
+                let data = {"token": token};
+                axios.post("/record", data)
+                    .then(res => {
+                        if (res['data']['HTTPStatusCode'] == "200") {
+                            this.Token = token
+                            localStorage.setItem("token", token);
+                        } else {
+                            alert("token错误")
+                            location.reload()
+                        }
+                    })
+            } else {
+                this.Token = localStorage.getItem("token")
+            }
+        },
+    });
+    //自动刷新请求信息
+    setInterval("app.GetRecords()", 10000);
+</script>
+
+</html>
